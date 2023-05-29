@@ -51,47 +51,40 @@ def separate_bipartite_graph(G, edgesM):
 
 def direct_graph(graph, group1, group2, group3, group4, M):
     directed_graph = defaultdict(list)
-
-    for node in group1:  # nodes in A\M
-        for neighbor in graph[node]:  # their neighbors
-            if neighbor in group2:  # if neighbor is in B\M
-                directed_graph[node].append(neighbor)  # add directed edge
-
-    for u, v in M:  # for each edge in M
-        if u in group3 and v in group2:  # if u is in A\M and v is in B\M
-            directed_graph[v].append(u)  # add directed edge from B to A
-        elif v in group3 and u in group2:  # if v is in A\M and u is in B\M
-            directed_graph[u].append(v)  # add directed edge from B to A
-
+    for node in group1:
+        for neighbour in graph[node]:
+            if neighbour in group2:
+                directed_graph[node].append(neighbour)
+    for u, v in M:
+        if u in group3:
+            directed_graph[u].append(v)
+        if v in group4:
+            directed_graph[v].append(u)
     return directed_graph
+
+
+
+def DFS(directed_graph, start, end_set, visited, path):
+    visited.add(start)
+    path.append(start)
+    if start in end_set and len(path) % 2 == 0:
+        return path
+    for neighbour in directed_graph[start]:
+        if neighbour not in visited:
+            result_path = DFS(directed_graph, neighbour, end_set, visited.copy(), path.copy())
+            if result_path:
+                return result_path
+    return None
 
 def augmenting_path(directed_graph, group1, group4):
     for node in group1:
-        path = DFS(directed_graph, node, set(group4))
+        path = DFS(directed_graph, node, group4, visited=set(), path=[])
         if path:
-            return path
+            if len(path) % 2 != 0: #only return the path if it's an augmenting path
+                return path
     return None
 
-def DFS(directed_graph, start, end_set, visited=None, path=None):
-    if visited is None:
-        visited = set()
-    if path is None:
-        path = [start]
-    else:
-        path = path + [start]  # create a new path
 
-    visited.add(start)
-
-    if start in end_set:
-        return path
-
-    for neighbour in directed_graph[start]:
-        if neighbour not in visited:
-            result_path = DFS(directed_graph, neighbour, end_set, visited, path)
-            if result_path:
-                return result_path
-
-    return None
 
 def create_initial_matching(G, setA, setB):
     M = set()
