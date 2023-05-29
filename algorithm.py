@@ -1,117 +1,32 @@
+import tkinter as tk
 import networkx as nx
-# import copy
-from collections import defaultdict
 import matplotlib.pyplot as plt
+from collections import defaultdict
 from networkx.algorithms import bipartite
 
-# The following function will build a simple graph
+def draw_graph(G, pos, M=[], path=[]):
+    plt.clf()
+    # Draw nodes with a yellow color
+    nx.draw_networkx_nodes(G, pos, node_size=500, node_color='yellow')
 
+    # Create labels for nodes
+    labels = {node: str(node) for node in G.nodes()}
 
-def BuildGraph():
-    # Create an empty graph structure (a "null graph") with no nodes and no edges.
-    G = nx.Graph()
+    # Draw labels on the nodes
+    nx.draw_networkx_labels(G, pos, labels=labels, font_color='black')
 
-    # Add nodes to the Graph
-    G.add_node(1)
-    G.add_node(2)
-    G.add_node(3)
+    non_M_edges = [e for e in G.edges() if e not in M and tuple(reversed(e)) not in M]
+    M_edges = [e for e in M]
+    path_edges = [e for e in path]
 
-    # Add edges to the Graph (pairs of nodes)
-    G.add_edge(1, 2)
-    G.add_edge(1, 3)
+    nx.draw_networkx_edges(G, pos, edgelist=non_M_edges, edge_color='blue', width=2)
+    nx.draw_networkx_edges(G, pos, edgelist=M_edges, edge_color='red', width=2)
+    nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color='black', style='dashed', width=2)
 
-    # You can add nodes/edges to the Graph using lists as well
-    G.add_nodes_from([4, 5, 6])
-    G.add_edges_from([(4, 5), (5, 6)])
-    G.add_edge(1, 6)
-    # Draw the resulting Graph
-    nx.draw(G, with_labels=True)
-
-    if bipartite.is_bipartite(G):
-        print("Graph is bipartite")
-        setA, setB = bipartite.sets(G)
-        print("Set 1: ", setA)
-        print("Set 2: ", setB)
-
-    # Finally, show the plot
-    # plt.show()
-
-    # Create the bipartite graph
-    G = nx.Graph()
-    G.add_nodes_from([1, 2, 3, 4, 5, 6])
-    G.add_edges_from([(1, 2), (1, 3), (1, 6), (4, 5), (5, 6)])
-
-    # Convert to directed graph
-    DG = G.to_directed()
-
-    if bipartite.is_bipartite(G):
-        print("Graph is bipartite")
-        setA, setB = bipartite.sets(G)
-        print("Set 1: ", setA)
-        print("Set 2: ", setB)
-    else:
-        print("The graph is not bipartite.")
-    plt.show()
-
-
-def DFS(directed_graph, start, end_set, visited=None, path=None):
-    if visited is None:
-        visited = set()
-    if path is None:
-        path = [start]
-    else:
-        path = path + [start]  # create a new path
-
-    visited.add(start)
-
-    if start in end_set:
-        return path
-
-    for neighbour in directed_graph[start]:
-        if neighbour not in visited:
-            result_path = DFS(directed_graph, neighbour,
-                              end_set, visited, path)
-            if result_path:
-                return result_path
-
-    return None
-
-
-def augmenting_path(directed_graph, group1, group4):
-    for node in group1:
-        path = DFS(directed_graph, node, set(group4))
-        if path:
-            return path
-    return None
-
-
-def direct_graph(graph, group1, group2, group3, group4, M):
-    directed_graph = defaultdict(list)
-
-    M = set(M)
-
-    groups = [group1.union(group2), group2, group3, group3.union(group4)]
-
-    for i in range(3):  # for each group of nodes
-        for node in groups[i]:
-            for neighbor in graph[node]:
-                if neighbor in groups[i+1]:  # if neighbor is in the next group
-                    if not ((node, neighbor) in M or (neighbor, node) in M):  # ignore edges from M
-                        directed_graph[node].append(neighbor)  # create a directed edge
-
-    # specifically check if there are direct connections between group1 and group4
-    for node in group1:
-        for neighbor in graph[node]:
-            if neighbor in group4:
-                if not ((node, neighbor) in M or (neighbor, node) in M):  # ignore edges from M
-                    directed_graph[node].append(neighbor)  # create a directed edge
-
-    return directed_graph
-
-
+    plt.show(block=False)
+    plt.pause(1)
 
 def separate_bipartite_graph(G, edgesM):
-
     M = set()
     for u, v in edgesM:
         M.add(u)
@@ -142,61 +57,87 @@ def separate_bipartite_graph(G, edgesM):
     print("Group B With M: ", groupBWithM)
     return groupANoM, groupBNoM, groupAWithM, groupBWithM
 
+def direct_graph(graph, group1, group2, group3, group4, M):
+    directed_graph = defaultdict(list)
 
-def draw_graph(G, M=[], path=[]):
-    plt.clf()
-    pos = nx.spring_layout(G)
+    M = set(M)
 
-    # Draw nodes with a yellow color
-    nx.draw_networkx_nodes(G, pos, node_color='yellow')
-    
-    # Create labels for nodes
-    labels = {node: str(node) for node in G.nodes()}
+    groups = [group1.union(group2), group2, group3, group3.union(group4)]
 
-    # Draw labels on the nodes
-    nx.draw_networkx_labels(G, pos, labels=labels, font_color='black')
+    for i in range(3):  # for each group of nodes
+        for node in groups[i]:
+            for neighbor in graph[node]:
+                if neighbor in groups[i+1]:  # if neighbor is in the next group
+                    if not ((node, neighbor) in M or (neighbor, node) in M):  # ignore edges from M
+                        directed_graph[node].append(neighbor)  # create a directed edge
 
-    non_M_edges = [e for e in G.edges() if e not in M and tuple(reversed(e)) not in M]
-    M_edges = [e for e in M]
-    path_edges = [e for e in path]
+    # specifically check if there are direct connections between group1 and group4
+    for node in group1:
+        for neighbor in graph[node]:
+            if neighbor in group4:
+                if not ((node, neighbor) in M or (neighbor, node) in M):  # ignore edges from M
+                    directed_graph[node].append(neighbor)  # create a directed edge
 
-    nx.draw_networkx_edges(G, pos, edgelist=non_M_edges, edge_color='blue')
-    nx.draw_networkx_edges(G, pos, edgelist=M_edges, edge_color='red')
-    nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color='green', style='dashed')
-    
-    plt.show(block=False)
-    plt.pause(1)
+    return directed_graph
 
+def augmenting_path(directed_graph, group1, group4):
+    for node in group1:
+        path = DFS(directed_graph, node, set(group4))
+        if path:
+            return path
+    return None
 
+def DFS(directed_graph, start, end_set, visited=None, path=None):
+    if visited is None:
+        visited = set()
+    if path is None:
+        path = [start]
+    else:
+        path = path + [start]  # create a new path
 
-def main():
+    visited.add(start)
+
+    if start in end_set:
+        return path
+
+    for neighbour in directed_graph[start]:
+        if neighbour not in visited:
+            result_path = DFS(directed_graph, neighbour, end_set, visited, path)
+            if result_path:
+                return result_path
+
+    return None
+
+def build_graph():
     G = nx.Graph()
-    
-    n = int(input("Enter the number of nodes: "))
-    G.add_nodes_from(range(1, n+1))
 
-    e = int(input("Enter the number of edges: "))
-    print("Enter edges (start_node end_node):")
-    for _ in range(e):
-        u, v = map(int, input().split())
+    # Add nodes to the Graph
+    nodes = node_entry.get().split()
+    G.add_nodes_from(nodes)
+
+    # Add edges to the Graph
+    edges = edges_entry.get().split()
+    for edge in edges:
+        u, v = edge.split(',')
         G.add_edge(u, v)
 
-    draw_graph(G)
-    
+    pos = nx.spring_layout(G)
+    draw_graph(G, pos)
+
     M = []
-    while 1:
+    while True:
         print("New Start Loop")
         groupANoM, groupBNoM, groupAWithM, groupBWithM = separate_bipartite_graph(G, M)
         directed_graph = direct_graph(G, groupANoM, groupBWithM, groupAWithM, groupBNoM, M)
         augmented_path = augmenting_path(directed_graph, groupANoM, groupBNoM)
         print("This is the Augmenting Path: ", augmented_path)
-        
+
         if augmented_path:
             augmented_path_edges = [(augmented_path[i], augmented_path[i + 1])
                                     for i in range(len(augmented_path) - 1)]
-            
-            draw_graph(G, M, augmented_path_edges)
-            
+
+            draw_graph(G, pos, M, augmented_path_edges)
+
             if not M:
                 M = augmented_path_edges
             else:
@@ -206,14 +147,43 @@ def main():
                         M = [e for e in M if e != edge and e != (v, u)]
                     else:
                         M.append(edge)
-            draw_graph(G, M)
+            draw_graph(G, pos, M)
         else:
             print("No Augmenting Path Found, Exiting Loop")
             break
         print("This is the current Matching: ", M)
         print("End while iteration")
-    
+
     print("Final matching M:", M)
 
-if __name__ == "__main__":
-    main()
+root = tk.Tk()
+root.title("Graph Builder")
+
+num_nodes_label = tk.Label(root, text="Number of Nodes:")
+num_nodes_label.pack()
+
+num_nodes_entry = tk.Entry(root)
+num_nodes_entry.pack()
+
+num_edges_label = tk.Label(root, text="Number of Edges:")
+num_edges_label.pack()
+
+num_edges_entry = tk.Entry(root)
+num_edges_entry.pack()
+
+node_label = tk.Label(root, text="Add Node (space-separated):")
+node_label.pack()
+
+node_entry = tk.Entry(root)
+node_entry.pack()
+
+edges_label = tk.Label(root, text="Add Edges (comma-separated):")
+edges_label.pack()
+
+edges_entry = tk.Entry(root)
+edges_entry.pack()
+
+build_graph_button = tk.Button(root, text="Build Graph", command=build_graph)
+build_graph_button.pack()
+
+root.mainloop()
