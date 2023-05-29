@@ -144,13 +144,21 @@ def separate_bipartite_graph(G, edgesM):
 
 
 def main():
+    
     # Create the bipartite graph
     G = nx.Graph()
-    G.add_nodes_from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
-    G.add_edges_from([(1, 7), (1, 8), (2, 8), (2, 9), (3, 9), (3, 10),
-                     (4, 10), (4, 11), (5, 11), (5, 12), (6, 12), (6, 7)])
+
+    n = int(input("Enter the number of nodes: "))
+    G.add_nodes_from(range(1, n+1))
+
+    e = int(input("Enter the number of edges: "))
+    print("Enter edges (start_node end_node):")
+    for _ in range(e):
+        u, v = map(int, input().split())
+        G.add_edge(u, v)
 
     nx.draw(G, with_labels=True)
+
     # Specify the group of edges to consider
     M = []
     while 1:
