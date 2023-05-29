@@ -25,12 +25,8 @@ def draw_graph(G, pos, M=[], path=[]):
 
     plt.show(block=False)
     plt.pause(1)
-
 def separate_bipartite_graph(G, edgesM):
-    M = set()
-    for u, v in edgesM:
-        M.add(u)
-        M.add(v)
+    M = set(edgesM)
 
     setA, setB = bipartite.sets(G)
     groupANoM = setA.copy()
@@ -38,19 +34,15 @@ def separate_bipartite_graph(G, edgesM):
     groupAWithM = set()
     groupBWithM = set()
 
-    for u in list(G.nodes()):
-        if u in setA and u in M:
-            groupANoM.remove(u)
-        if u in setB and u in M:
-            groupBNoM.remove(u)
-
-    print("This is M: ", M)
-    for u, v in edgesM:
+    for u, v in list(M):
         if u in setA:
+            groupANoM.remove(u)
             groupAWithM.add(u)
         if v in setB:
+            groupBNoM.remove(v)
             groupBWithM.add(v)
 
+    print("This is M: ", M)
     print("Group A\M: ", groupANoM)
     print("Group B\M: ", groupBNoM)
     print("Group A With M: ", groupAWithM)
@@ -60,23 +52,16 @@ def separate_bipartite_graph(G, edgesM):
 def direct_graph(graph, group1, group2, group3, group4, M):
     directed_graph = defaultdict(list)
 
-    M = set(M)
+    for node in group1:  # nodes in A\M
+        for neighbor in graph[node]:  # their neighbors
+            if neighbor in group2:  # if neighbor is in B\M
+                directed_graph[node].append(neighbor)  # add directed edge
 
-    groups = [group1.union(group2), group2, group3, group3.union(group4)]
-
-    for i in range(3):  # for each group of nodes
-        for node in groups[i]:
-            for neighbor in graph[node]:
-                if neighbor in groups[i+1]:  # if neighbor is in the next group
-                    if not ((node, neighbor) in M or (neighbor, node) in M):  # ignore edges from M
-                        directed_graph[node].append(neighbor)  # create a directed edge
-
-    # specifically check if there are direct connections between group1 and group4
-    for node in group1:
-        for neighbor in graph[node]:
-            if neighbor in group4:
-                if not ((node, neighbor) in M or (neighbor, node) in M):  # ignore edges from M
-                    directed_graph[node].append(neighbor)  # create a directed edge
+    for u, v in M:  # for each edge in M
+        if u in group3 and v in group2:  # if u is in A\M and v is in B\M
+            directed_graph[v].append(u)  # add directed edge from B to A
+        elif v in group3 and u in group2:  # if v is in A\M and u is in B\M
+            directed_graph[u].append(v)  # add directed edge from B to A
 
     return directed_graph
 
@@ -108,6 +93,18 @@ def DFS(directed_graph, start, end_set, visited=None, path=None):
 
     return None
 
+def create_initial_matching(G, setA, setB):
+    M = set()
+    used = set()
+    for u in setA:
+        for v in G.neighbors(u):
+            if v in setB and v not in used:
+                M.add((u, v))
+                used.add(u)
+                used.add(v)
+                break
+    return M
+
 def build_graph():
     G = nx.Graph()
 
@@ -124,7 +121,11 @@ def build_graph():
     pos = nx.spring_layout(G)
     draw_graph(G, pos)
 
-    M = []
+    # Create an initial matching M
+    setA, setB = bipartite.sets(G)
+    M = create_initial_matching(G, setA, setB)
+    draw_graph(G, pos, M)
+
     while True:
         print("New Start Loop")
         groupANoM, groupBNoM, groupAWithM, groupBWithM = separate_bipartite_graph(G, M)
@@ -138,15 +139,14 @@ def build_graph():
 
             draw_graph(G, pos, M, augmented_path_edges)
 
-            if not M:
-                M = augmented_path_edges
-            else:
-                for edge in augmented_path_edges:
-                    u, v = edge
-                    if any(((u, v) == (x, y) or (v, u) == (x, y)) for x, y in M):
-                        M = [e for e in M if e != edge and e != (v, u)]
-                    else:
-                        M.append(edge)
+            for edge in augmented_path_edges:
+                u, v = edge
+                if (u, v) in M:
+                    M.remove((u, v))
+                elif (v, u) in M:
+                    M.remove((v, u))
+                else:
+                    M.add((u, v))
             draw_graph(G, pos, M)
         else:
             print("No Augmenting Path Found, Exiting Loop")
@@ -155,6 +155,7 @@ def build_graph():
         print("End while iteration")
 
     print("Final matching M:", M)
+
 
 root = tk.Tk()
 root.title("Graph Builder")
