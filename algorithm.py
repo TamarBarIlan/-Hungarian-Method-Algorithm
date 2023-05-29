@@ -58,10 +58,11 @@ def DFS(directed_graph, start, end_set, visited=None, path=None):
     if visited is None:
         visited = set()
     if path is None:
-        path = []
+        path = [start]
+    else:
+        path = path + [start]  # create a new path
 
     visited.add(start)
-    path.append(start)
 
     if start in end_set:
         return path
@@ -73,7 +74,6 @@ def DFS(directed_graph, start, end_set, visited=None, path=None):
             if result_path:
                 return result_path
 
-    path.pop()
     return None
 
 
@@ -85,18 +85,29 @@ def augmenting_path(directed_graph, group1, group4):
     return None
 
 
-def direct_graph(graph, group1, group2, group3, group4):
+def direct_graph(graph, group1, group2, group3, group4, M):
     directed_graph = defaultdict(list)
 
-    groups = [set(group1), set(group2), set(group3), set(group4)]
+    M = set(M)
+
+    groups = [group1.union(group2), group2, group3, group3.union(group4)]
 
     for i in range(3):  # for each group of nodes
         for node in groups[i]:
             for neighbor in graph[node]:
                 if neighbor in groups[i+1]:  # if neighbor is in the next group
-                    directed_graph[node].append(
-                        neighbor)  # create a directed edge
+                    if not ((node, neighbor) in M or (neighbor, node) in M):  # ignore edges from M
+                        directed_graph[node].append(neighbor)  # create a directed edge
+
+    # specifically check if there are direct connections between group1 and group4
+    for node in group1:
+        for neighbor in graph[node]:
+            if neighbor in group4:
+                if not ((node, neighbor) in M or (neighbor, node) in M):  # ignore edges from M
+                    directed_graph[node].append(neighbor)  # create a directed edge
+
     return directed_graph
+
 
 
 def separate_bipartite_graph(G, edgesM):
@@ -125,50 +136,53 @@ def separate_bipartite_graph(G, edgesM):
         if v in setB:
             groupBWithM.add(v)
 
-    print("Group A\M: " , groupANoM)
-    print("Group B\M: " , groupBNoM)
-    print("Group A With M: " , groupAWithM)
-    print("Group B With M: " , groupBWithM)
+    print("Group A\M: ", groupANoM)
+    print("Group B\M: ", groupBNoM)
+    print("Group A With M: ", groupAWithM)
+    print("Group B With M: ", groupBWithM)
     return groupANoM, groupBNoM, groupAWithM, groupBWithM
+
 
 def main():
     # Create the bipartite graph
     G = nx.Graph()
     G.add_nodes_from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
-    G.add_edges_from([(1, 7), (1, 8), (2, 8), (2, 9), (3, 9), (3, 10), (4, 10), (4, 11), (5, 11), (5, 12), (6, 12), (6, 7)])
-
+    G.add_edges_from([(1, 7), (1, 8), (2, 8), (2, 9), (3, 9), (3, 10),
+                     (4, 10), (4, 11), (5, 11), (5, 12), (6, 12), (6, 7)])
 
     nx.draw(G, with_labels=True)
     # Specify the group of edges to consider
-    M = [(3,9)]
+    M = []
     while 1:
         print("New Start Loop")
         # Separate the bipartite graph into four groups
-        groupANoM, groupBNoM, groupAWithM, groupBWithM = separate_bipartite_graph(G, M)
-        directed_graph = direct_graph(G , groupANoM , groupBWithM , groupAWithM,groupBNoM)
+        groupANoM, groupBNoM, groupAWithM, groupBWithM = separate_bipartite_graph(
+            G, M)
+        directed_graph = direct_graph(G, groupANoM, groupBWithM, groupAWithM, groupBNoM, M)
         augmented_path = augmenting_path(directed_graph, groupANoM, groupBNoM)
         print("This is the Augmenting Path: ", augmented_path)
         if augmented_path:
-            augmented_path_edges = [(augmented_path[i], augmented_path[i + 1]) for i in range(len(augmented_path) - 1)]
+            augmented_path_edges = [(augmented_path[i], augmented_path[i + 1])
+                                    for i in range(len(augmented_path) - 1)]
             if not M:
                 M = augmented_path_edges
             else:
                 for edge in augmented_path_edges:
                     u, v = edge
-                    if any(((u, v) == (x, y) or (u, v) == (y, x)) for x, y in M):
-                        M = [e for e in M if e != edge]  # Fix: Remove the edge from M
+                    # Check for edge or reverse edge
+                    if any(((u, v) == (x, y) or (v, u) == (x, y)) for x, y in M):
+                        # Remove the edge or its reverse from M
+                        M = [e for e in M if e != edge and e != (v, u)]
                     else:
-                        M.append(edge)  # Fix: Append the edge to M
-
-
+                        M.append(edge)
         else:
             print("No Augmenting Path Found, Exiting Loop")
             break
-
-
-        print("This is the current Matching: " , M)
+        print("This is the current Matching: ", M)
         print("End while iteration")
+
     # Show the plot
+    plt.show()
     print("Final matching M:", M)
 
 
