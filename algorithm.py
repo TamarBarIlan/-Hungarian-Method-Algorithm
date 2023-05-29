@@ -143,11 +143,35 @@ def separate_bipartite_graph(G, edgesM):
     return groupANoM, groupBNoM, groupAWithM, groupBWithM
 
 
-def main():
-    
-    # Create the bipartite graph
-    G = nx.Graph()
+def draw_graph(G, M=[], path=[]):
+    plt.clf()
+    pos = nx.spring_layout(G)
 
+    # Draw nodes with a yellow color
+    nx.draw_networkx_nodes(G, pos, node_color='yellow')
+    
+    # Create labels for nodes
+    labels = {node: str(node) for node in G.nodes()}
+
+    # Draw labels on the nodes
+    nx.draw_networkx_labels(G, pos, labels=labels, font_color='black')
+
+    non_M_edges = [e for e in G.edges() if e not in M and tuple(reversed(e)) not in M]
+    M_edges = [e for e in M]
+    path_edges = [e for e in path]
+
+    nx.draw_networkx_edges(G, pos, edgelist=non_M_edges, edge_color='blue')
+    nx.draw_networkx_edges(G, pos, edgelist=M_edges, edge_color='red')
+    nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color='green', style='dashed')
+    
+    plt.show(block=False)
+    plt.pause(1)
+
+
+
+def main():
+    G = nx.Graph()
+    
     n = int(input("Enter the number of nodes: "))
     G.add_nodes_from(range(1, n+1))
 
@@ -157,42 +181,39 @@ def main():
         u, v = map(int, input().split())
         G.add_edge(u, v)
 
-    nx.draw(G, with_labels=True)
-
-    # Specify the group of edges to consider
+    draw_graph(G)
+    
     M = []
     while 1:
         print("New Start Loop")
-        # Separate the bipartite graph into four groups
-        groupANoM, groupBNoM, groupAWithM, groupBWithM = separate_bipartite_graph(
-            G, M)
+        groupANoM, groupBNoM, groupAWithM, groupBWithM = separate_bipartite_graph(G, M)
         directed_graph = direct_graph(G, groupANoM, groupBWithM, groupAWithM, groupBNoM, M)
         augmented_path = augmenting_path(directed_graph, groupANoM, groupBNoM)
         print("This is the Augmenting Path: ", augmented_path)
+        
         if augmented_path:
             augmented_path_edges = [(augmented_path[i], augmented_path[i + 1])
                                     for i in range(len(augmented_path) - 1)]
+            
+            draw_graph(G, M, augmented_path_edges)
+            
             if not M:
                 M = augmented_path_edges
             else:
                 for edge in augmented_path_edges:
                     u, v = edge
-                    # Check for edge or reverse edge
                     if any(((u, v) == (x, y) or (v, u) == (x, y)) for x, y in M):
-                        # Remove the edge or its reverse from M
                         M = [e for e in M if e != edge and e != (v, u)]
                     else:
                         M.append(edge)
+            draw_graph(G, M)
         else:
             print("No Augmenting Path Found, Exiting Loop")
             break
         print("This is the current Matching: ", M)
         print("End while iteration")
-
-    # Show the plot
-    plt.show()
+    
     print("Final matching M:", M)
-
 
 if __name__ == "__main__":
     main()
