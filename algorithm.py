@@ -5,6 +5,7 @@ from collections import defaultdict
 from networkx.algorithms import bipartite
 
 def draw_graph(G, pos, M=[], path=[]):
+    print("Drawing Graph")
     plt.clf()
     # Draw nodes with a yellow color
     nx.draw_networkx_nodes(G, pos, node_size=500, node_color='yellow')
@@ -21,10 +22,11 @@ def draw_graph(G, pos, M=[], path=[]):
 
     nx.draw_networkx_edges(G, pos, edgelist=non_M_edges, edge_color='blue', width=2)
     nx.draw_networkx_edges(G, pos, edgelist=M_edges, edge_color='red', width=2)
-    nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color='black', style='dashed', width=2)
+    nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color='green', style='dashed', width=2)
 
     plt.show(block=False)
     plt.pause(1)
+    
 def separate_bipartite_graph(G, edgesM):
     M = set(edgesM)
 
@@ -53,15 +55,28 @@ def direct_graph(graph, group1, group2, group3, group4, M):
     directed_graph = defaultdict(list)
     for node in group1:
         for neighbour in graph[node]:
-            if neighbour in group2:
+            if neighbour in group2 or (node, neighbour) in M:
                 directed_graph[node].append(neighbour)
-    for u, v in M:
-        if u in group3:
-            directed_graph[u].append(v)
-        if v in group4:
-            directed_graph[v].append(u)
+    for node in group2:
+        for neighbour in graph[node]:
+            if neighbour in group3 or (node, neighbour) in M:
+                directed_graph[node].append(neighbour)
+    for node in group3:
+        for neighbour in graph[node]:
+            if neighbour in group4 or (node, neighbour) in M:
+                directed_graph[node].append(neighbour)
+    for node in group4:
+        for neighbour in graph[node]:
+            if neighbour in group1 or (node, neighbour) in M:
+                directed_graph[node].append(neighbour)
     return directed_graph
 
+def augmenting_path(directed_graph, group1, group4):
+    for node in group1:
+        path = DFS(directed_graph, node, group4, visited=set(), path=[])
+        if path:
+            return path
+    return None
 
 
 def DFS(directed_graph, start, end_set, visited, path):
@@ -76,17 +91,7 @@ def DFS(directed_graph, start, end_set, visited, path):
                 return result_path
     return None
 
-def augmenting_path(directed_graph, group1, group4):
-    for node in group1:
-        path = DFS(directed_graph, node, group4, visited=set(), path=[])
-        if path:
-            if len(path) % 2 != 0: #only return the path if it's an augmenting path
-                return path
-    return None
-
-
-
-def create_initial_matching(G, setA, setB):
+def create_initial_matching(G, setA, setB, pos):
     M = set()
     used = set()
     for u in setA:
@@ -95,8 +100,10 @@ def create_initial_matching(G, setA, setB):
                 M.add((u, v))
                 used.add(u)
                 used.add(v)
+                draw_graph(G, pos, M)
                 break
     return M
+
 
 def build_graph():
     G = nx.Graph()
@@ -116,7 +123,7 @@ def build_graph():
 
     # Create an initial matching M
     setA, setB = bipartite.sets(G)
-    M = create_initial_matching(G, setA, setB)
+    M = create_initial_matching(G, setA, setB, pos)
     draw_graph(G, pos, M)
 
     while True:
@@ -131,7 +138,7 @@ def build_graph():
                                     for i in range(len(augmented_path) - 1)]
 
             draw_graph(G, pos, M, augmented_path_edges)
-
+            
             for edge in augmented_path_edges:
                 u, v = edge
                 if (u, v) in M:
